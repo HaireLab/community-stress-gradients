@@ -1,0 +1,98 @@
+---
+title: "Field data summaries"
+author: "S. Haire"
+date: "2/8/2021"
+output: html_document
+---
+
+```{r setup, warning=FALSE, echo=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(readxl) 
+library(ggplot2)
+library(ggpubr)
+library(dplyr)
+library(wesanderson)
+library(RColorBrewer)
+
+pal = c("#E41A1C", "#705C83", "#3E8E93", "#4DAF4A", "#7E6E85", "#BA5E6C",
+        "#FF7F00", "#FFD421", "#E1C62F", "#A65628", "#DB728C", "#D789B2", "#999999")
+
+```
+
+```{r readdata, warning=FALSE, echo=FALSE}
+## table of data attributes
+attr.tab<-read_excel("./data/excel-files/_Data_Attributes_ALL.xlsx", range=cell_cols("A:D"))
+
+## clear creek
+ccd.dwd<-read_excel("./data/excel-files/CCD_DWD.xlsx") ## dnbr, dwd, lat long etc
+ccd.plot<-read_excel("./data/excel-files/Clear_Creek_Divide_plot_data.xlsx", 1) # plot data
+ccd.ht<-read_excel("./data/excel-files/Clear_Creek_Divide_plot_data.xlsx", 2) # seedling hts
+ccd.den<-read_excel("./data/excel-files/Clear_Creek_Divide_plot_data.xlsx", 3) # seedling density
+ccd.res<-read_excel("./data/excel-files/Clear_Creek_Divide_plot_data.xlsx", 4) # residual trees
+ccd.grc<-read_excel("./data/excel-files/Clear_Creek_Divide_plot_data.xlsx", 5) # ground cover classes
+
+## blue mtns
+blu.plot<-read_excel("./data/excel-files/Blue_mountain_data.xlsx", 1) # plot data
+blu.ht<-read_excel("./data/excel-files/Blue_mountain_data.xlsx", 2) # seedling hts
+blu.den<-read_excel("./data/excel-files/Blue_mountain_data.xlsx", 3) # seedling density
+blu.res<-read_excel("./data/excel-files/Blue_mountain_data.xlsx", 4) # residual trees
+blu.grc<-read_excel("./data/excel-files/Blue_mountain_data.xlsx", 5) # ground cover classes
+
+## southwest
+sw.ll.elev<-read_excel("./data/excel-files/Southwest_data.xlsx", 1) # lat long elev
+sw.plot<-read_excel("./data/excel-files/Southwest_data.xlsx", 2) # plot data
+sw.ht<-read_excel("./data/excel-files/Southwest_data.xlsx", 3) # seedling hts
+sw.den<-read_excel("./data/excel-files/Southwest_data.xlsx", 4) # seedling density
+sw.res<-read_excel("./data/excel-files/Southwest_data.xlsx", 5) # residual trees
+sw.grc<-read_excel("./data/excel-files/Southwest_data.xlsx", 6) # ground cover classes
+
+## all plants
+## had to specify col type due to '747' being the first entry for BURN
+plant.cov<-read_excel("./data/excel-files/All_Refugia_Plants.xlsx", 1, col_types=c("text", "text", "text", "numeric", "numeric", "numeric")) # plant cover
+plant.list<-read_excel("./data/excel-files/All_Refugia_Plants.xlsx", 2) # list of plant spp
+
+```
+
+#### What's in the field data?
+
+The field data include several components that are of interest to our current questions about plant community effects on post-fire tree regeneration. 
+
+#### Plant species
+A total of 506 plant species were recorded across the 13 field sites. Genus, Group (e.g., Dicot), Family and Duration (e.g., Annual) were listed for each species.
+
+```{r sppgroup, warning=FALSE, echo=FALSE}
+plant.list%>% group_by(GENUS) %>% tally()
+plant.list%>% group_by(GROUP) %>% tally()
+plant.list%>% group_by(FAMILY) %>% tally()
+plant.list%>% group_by(DURATION) %>% tally()
+
+```
+
+The plants were identified by stratum: 1 (upper) to 5 (lower). Cover and height were recorded at each plot location.
+
+```{r sppcov, warning=FALSE, echo=FALSE}
+plant.cov %>% group_by(BURN, STRATUM) %>% summarise(meancov=mean(COVER))
+plant.cov %>% group_by(BURN, STRATUM) %>% summarise(meancov=mean(HEIGHT_M))
+```
+
+The following plots illustrate 1) the frequency of plants recorded in each strata and 2) the cover of plants recorded in each strata.
+```{r sppcovplots1, warning=FALSE, echo=FALSE}
+gghistogram(plant.cov, x="STRATUM", fill="BURN", color="black",bins=8, position="dodge", palette=pal) 
+ggboxplot(plant.cov, x="STRATUM", y="COVER", color="BURN", fill="BURN", palette=pal)
+
+```
+
+####....coming soon!
+
+#### Ground cover
+
+#### Young trees
+
+Tree height
+
+Tree density
+
+
+
+
