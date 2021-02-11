@@ -1,9 +1,8 @@
 # community-stress-gradients
 Finding out where and when Community Matters!
 
-The readme file is a place to keep the project description and a list of the goals of the analysis, including code to achieve those goals.
+The readme file is a place to keep the project description and a list of the goals of the analysis. It includes a directory of code and data.
 
-Project overview:
 Overall research question:
 The purpose of this study is to fully examine our dataset from 13 burned areas located across the western US to address emerging questions regarding ecosystem trajectories and transformation following severe fire in dry pine mixed conifer forests. The particular focus here is on how plant community affects post-fire seedling establishment, and determine whether community effects vary across local and regional climate gradients using the Stress Gradient Hypothesis as an anchor.
 
@@ -11,3 +10,10 @@ The stress gradient hypothesis posits that facilitation relationships will be mo
 
 An archive of the data can be found here:
 Miller, Carol; Krawchuk, Meg A.; Coop, Jonathan D.; Downing, William M.; Walker, Ryan B.; Haire, Sandra L.; Chong, Geneva; Whitman, Ellen; Parisien, Marc-André. 2021. Field and spatial data for: Understanding the role of fire refugia in promoting ecosystem resilience of dry forests in the western United States. Fort Collins, CO: Forest Service Research Data Archive. https://doi.org/10.2737/RDS-2021-0003
+
+### Directory of data and code
+
+#### Data summaries and exploratory analyses
+
+data.summaries.Rmd (and data.summaries.html): First look at the field data (in progress)
+
