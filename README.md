@@ -17,3 +17,8 @@ Miller, Carol; Krawchuk, Meg A.; Coop, Jonathan D.; Downing, William M.; Walker,
 
 data.summaries.Rmd (and data.summaries.html): First look at the field data (in progress)
 
+#### PCA climate space
+climate.space.bioclim.R: use bioclimatic data to run pca for the extent of the study region
+csplots.pcs.R: use the output from the above to plot the location of the study burns in the climate space (x=PC1, y=PC2)
+    example output: pcscatter3.png
+
