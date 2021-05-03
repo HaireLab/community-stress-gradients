@@ -1,0 +1,119 @@
+---
+title: "spei.time.series-2"
+author: "S. Haire"
+date: "5/3/2021"
+output: powerpoint_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(sf)
+library(dplyr)
+library(raster)
+library(ggplot2)
+```
+
+## Trends in SPEI 2002-2017
+
+-  747 Complex (Oregon)
+-  Roberts Creek (Oregon)
+-  Hayman (Colorado)
+-  Missionary Ridge (Colorado)
+-  Ponil Complex (New Mexico)
+-  Rodeo (Arizona)
+
+```{r dataprep, echo = FALSE}
+hv=scan("C:/Users/sandr/Documents/Rfiles/stress.gradients/hayman.spei.txt")
+df_hay=tibble::as_tibble(hv)
+## need a date col 
+df_hay$date=seq(as.Date("2002/1/1"), by = "month", length.out = 192)
+
+v747=scan("C:/Users/sandr/Documents/Rfiles/stress.gradients/b747.spei.txt")
+df_747=tibble::as_tibble(v747)
+## need a date col 
+df_747$date=seq(as.Date("2002/1/1"), by = "month", length.out = 192)
+
+robv=scan("C:/Users/sandr/Documents/Rfiles/stress.gradients/rob.spei.txt")
+df_rob=tibble::as_tibble(robv)
+## need a date col 
+df_rob$date=seq(as.Date("2002/1/1"), by = "month", length.out = 192)
+
+misv=scan("C:/Users/sandr/Documents/Rfiles/stress.gradients/mis.spei.txt")
+df_mis=tibble::as_tibble(misv)
+## need a date col 
+df_mis$date=seq(as.Date("2002/1/1"), by = "month", length.out = 192)
+
+ponv=scan("C:/Users/sandr/Documents/Rfiles/stress.gradients/pon.spei.txt")
+df_pon=tibble::as_tibble(ponv)
+## need a date col 
+df_pon$date=seq(as.Date("2002/1/1"), by = "month", length.out = 192)
+
+rodv=scan("C:/Users/sandr/Documents/Rfiles/stress.gradients/rodeo.spei.txt")
+df_rod=tibble::as_tibble(rodv)
+## need a date col 
+df_rod$date=seq(as.Date("2002/1/1"), by = "month", length.out = 192)
+
+
+```
+
+```{r plot_ts, echo = FALSE}
+
+## area fill and smooth
+## put on common y-scale and add title
+min=min(df_mis$value, df_747$value, df_rob$value, df_hay$value, df_rod$value, df_pon$value)
+max=max(df_mis$value, df_747$value, df_rob$value, df_hay$value, df_rod$value, df_pon$value)
+
+p <- ggplot(df_hay, aes(x=date, y=value)) + geom_area() + ylim(min, max) + 
+  scale_x_date(breaks = "year")+  xlab("Year")+ theme_bw()+ 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+p + stat_smooth(
+  color = "#FC4E07", fill = "#FC4E07",
+  method = "loess"
+) + ggtitle("Hayman")
+
+p <- ggplot(df_747, aes(x=date, y=value)) + geom_area() + ylim(min, max) + 
+  scale_x_date(breaks = "year")+  xlab("Year")+ theme_bw()+ 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+p + stat_smooth(
+  color = "#FC4E07", fill = "#FC4E07",
+  method = "loess"
+) + ggtitle("747 Complex")
+
+p <- ggplot(df_rob, aes(x=date, y=value)) + geom_area() + ylim(min, max) + 
+  scale_x_date(breaks = "year")+  xlab("Year")+ theme_bw()+ 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+p + stat_smooth(
+  color = "#FC4E07", fill = "#FC4E07",
+  method = "loess"
+) + ggtitle("Roberts Creek")
+
+p <- ggplot(df_mis, aes(x=date, y=value)) + geom_area() + ylim(min, max) + 
+  scale_x_date(breaks = "year")+  xlab("Year")+ theme_bw()+ 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+p + stat_smooth(
+  color = "#FC4E07", fill = "#FC4E07",
+  method = "loess"
+) + ggtitle("Missionary Ridge")
+
+p <- ggplot(df_pon, aes(x=date, y=value)) + geom_area() + ylim(min, max) + 
+  scale_x_date(breaks = "year")+  xlab("Year")+ theme_bw()+ 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+p + stat_smooth(
+  color = "#FC4E07", fill = "#FC4E07",
+  method = "loess"
+) + ggtitle("Ponil Complex")
+
+p <- ggplot(df_rod, aes(x=date, y=value)) + geom_area() + ylim(min, max) + 
+  scale_x_date(breaks = "year")+  xlab("Year")+ theme_bw()+ 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+p + stat_smooth(
+  color = "#FC4E07", fill = "#FC4E07",
+  method = "loess"
+) + ggtitle("Rodeo")
+
+
+```
+
+
+
