@@ -22,7 +22,7 @@ library(ggplot2)
 -  Ponil Complex (New Mexico)
 -  Rodeo (Arizona)
 
-```{r dataprep, echo = FALSE}
+```{r dataprep1, echo = FALSE}
 hv=scan("C:/Users/sandr/Documents/Rfiles/stress.gradients/hayman.spei.txt")
 df_hay=tibble::as_tibble(hv)
 ## need a date col 
@@ -53,18 +53,24 @@ df_rod=tibble::as_tibble(rodv)
 ## need a date col 
 df_rod$date=seq(as.Date("2002/1/1"), by = "month", length.out = 192)
 
+ccdv=scan("C:/Users/sandr/Documents/Rfiles/stress.gradients/ccd.spei.txt")
+df_ccd=tibble::as_tibble(ccdv)
+## need a date col 
+df_ccd$date=seq(as.Date("2002/1/1"), by = "month", length.out = 228)
+
 
 ```
 
-```{r plot_ts, echo = FALSE}
+```{r plot_ts1, echo = FALSE}
 
 ## area fill and smooth
 ## put on common y-scale and add title
+## format date yr-mo
 min=min(df_mis$value, df_747$value, df_rob$value, df_hay$value, df_rod$value, df_pon$value)
 max=max(df_mis$value, df_747$value, df_rob$value, df_hay$value, df_rod$value, df_pon$value)
 
 p <- ggplot(df_hay, aes(x=date, y=value)) + geom_area() + ylim(min, max) + 
-  scale_x_date(breaks = "year")+  xlab("Year")+ theme_bw()+ 
+  scale_x_date(breaks = "year") +  xlab("Year")+ theme_bw()+ 
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 p + stat_smooth(
@@ -115,5 +121,133 @@ p + stat_smooth(
 
 ```
 
+## Trends in SPEI 2000-2017
+- Hash Rock (Oregon)
+- Outlet (Arizona)
+- Cerro Grande (New Mexico)
+- Pumpkin (Arizona)
 
+```{r dataprep2, echo = FALSE}
+hrv=scan("C:/Users/sandr/Documents/Rfiles/stress.gradients/hr.spei.txt")
+df_hash=tibble::as_tibble(hrv)
+## need a date col 
+df_hash$date=seq(as.Date("2000/1/1"), by = "month", length.out = 216)
+
+outv=scan("C:/Users/sandr/Documents/Rfiles/stress.gradients/out.spei.txt")
+df_out=tibble::as_tibble(outv)
+## need a date col 
+df_out$date=seq(as.Date("2000/1/1"), by = "month", length.out = 216)
+
+cgv=scan("C:/Users/sandr/Documents/Rfiles/stress.gradients/cer.spei.txt")
+df_cg=tibble::as_tibble(cgv)
+## need a date col 
+df_cg$date=seq(as.Date("2000/1/1"), by = "month", length.out = 216)
+
+puv=scan("C:/Users/sandr/Documents/Rfiles/stress.gradients/pum.spei.txt")
+df_pu=tibble::as_tibble(puv)
+## need a date col 
+df_pu$date=seq(as.Date("2000/1/1"), by = "month", length.out = 216)
+
+
+```
+
+```{r plot_ts2, echo = FALSE}
+
+## area fill and smooth
+## put on common y-scale and add title
+## format date yr-mo
+min=min(df_hash$value, df_out$value, df_cg$value, df_pu$value)
+max=max(df_hash$value, df_out$value, df_cg$value, df_pu$value)
+
+p <- ggplot(df_hash, aes(x=date, y=value)) + geom_area() + ylim(min, max) + 
+  scale_x_date(breaks = "year") +  xlab("Year")+ theme_bw()+ 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+p + stat_smooth(
+  color = "#a6bddb", fill = "#a6bddb",
+  method = "loess"
+) + ggtitle("Hash Rock")
+
+p <- ggplot(df_out, aes(x=date, y=value)) + geom_area() + ylim(min, max) + 
+  scale_x_date(breaks = "year") +  xlab("Year")+ theme_bw()+ 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+p + stat_smooth(
+  color = "#a6bddb", fill = "#a6bddb",
+  method = "loess"
+) + ggtitle("Outlet")
+
+p <- ggplot(df_cg, aes(x=date, y=value)) + geom_area() + ylim(min, max) + 
+  scale_x_date(breaks = "year") +  xlab("Year")+ theme_bw()+ 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+p + stat_smooth(
+  color = "#a6bddb", fill = "#a6bddb",
+  method = "loess"
+) + ggtitle("Cerro Grande")
+
+p <- ggplot(df_pu, aes(x=date, y=value)) + geom_area() + ylim(min, max) + 
+  scale_x_date(breaks = "year") +  xlab("Year")+ theme_bw()+ 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+p + stat_smooth(
+  color = "#a6bddb", fill = "#a6bddb",
+  method = "loess"
+) + ggtitle("Pumpkin")
+
+
+```
+
+## Trends in SPEI: last three sites!
+- 2000-2018 Clear Creek Divide (Idaho)
+- 2003-2017 Poplar Complex (New Mexico)
+- 2005-2017 Burnt Cabin (Oregon)
+
+```{r dataprep3, echo = FALSE}
+ccdv=scan("C:/Users/sandr/Documents/Rfiles/stress.gradients/ccd.spei.txt")
+df_ccd=tibble::as_tibble(ccdv)
+## need a date col 
+df_ccd$date=seq(as.Date("2000/1/1"), by = "month", length.out = 228)
+
+popv=scan("C:/Users/sandr/Documents/Rfiles/stress.gradients/pop.spei.txt")
+df_pop=tibble::as_tibble(popv)
+## need a date col 
+df_pop$date=seq(as.Date("2003/1/1"), by = "month", length.out = 180)
+
+bcv=scan("C:/Users/sandr/Documents/Rfiles/stress.gradients/bc.spei.txt")
+df_bc=tibble::as_tibble(bcv)
+## need a date col 
+df_bc$date=seq(as.Date("2005/1/1"), by = "month", length.out = 156)
+
+```
+
+```{r plot_ts3, echo = FALSE}
+
+## area fill and smooth
+## put on common y-scale and add title
+## format date yr-mo
+min=min(df_ccd$value, df_pop$value, df_bc$value)
+max=max(df_ccd$value, df_pop$value, df_bc$value)
+
+p <- ggplot(df_ccd, aes(x=date, y=value)) + geom_area() + ylim(min, max) + 
+  scale_x_date(breaks = "year") +  xlab("Year")+ theme_bw()+ 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+p + stat_smooth(
+  color = "#a1d99b", fill = "#a1d99b",
+  method = "loess"
+) + ggtitle("Clear Creek")
+
+p <- ggplot(df_pop, aes(x=date, y=value)) + geom_area() + ylim(min, max) + 
+  scale_x_date(breaks = "year") +  xlab("Year")+ theme_bw()+ 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+p + stat_smooth(
+  color = "#a1d99b", fill = "#a1d99b",
+  method = "loess"
+) + ggtitle("Poplar")
+
+p <- ggplot(df_bc, aes(x=date, y=value)) + geom_area() + ylim(min, max) + 
+  scale_x_date(breaks = "year") +  xlab("Year")+ theme_bw()+ 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+p + stat_smooth(
+  color = "#a1d99b", fill = "#a1d99b",
+  method = "loess"
+) + ggtitle("Burnt Cabin")
+
+```
 
