@@ -21,4 +21,12 @@ data.summaries.Rmd (and data.summaries.html): First look at the field data (in p
 climate.space.bioclim.R: use bioclimatic data to run pca for the extent of the study region
 csplots.pcs.R: use the output from the above to plot the location of the study burns in the climate space (x=PC1, y=PC2)
     example output: pcscatter3.png
+    
+#### Climate Water Deficit 
+terraclimate.data.R: download netCDF data and crop to regions with sample points from 13 study sites and extract point values across post-fire years
+
+def.data.assembly.R: calculate statistics of the overall distribution of Def values at the sample points across post-fire years
+
+plot.def.stats.R: plot statistics of the overall distribution of def values at each sample point across post-fire years
+
 
