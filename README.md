@@ -29,4 +29,7 @@ def.data.assembly.R: calculate statistics of the overall distribution of Def val
 
 plot.def.stats.R: plot statistics of the overall distribution of def values at each sample point across post-fire years
 
+#### Tree age graphs
+
+trees.and.spei.plots_2002.R: For sites burned in 2002, assemble the data and plot SPEI, year of origin (derived from internode counts), and heat load index 
 
