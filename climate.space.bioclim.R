@@ -1,7 +1,7 @@
 ## climate.space.bioclim.R
-## use the polygon (fire perimeter) data
-## the plot coordinates are going to take time to sort out--some utm (3 zones) 
 ## first run bioclim.dataprep.R (reads in bioclim layers and crop to extent of burned sites)
+## sample pc's at plot locations
+## used the 1991-2020 normals for this run
 
 rm(list=ls()) ### start over
 homedir<-getwd()
@@ -9,20 +9,17 @@ library(sf)
 library(rgdal)
 library(raster)
 
-## use this shp to extract data: perims.lcc
-perims<-readOGR('./data/sp', 'all_burns_incl_CCD')
-
 ## bioclim prj
-bio.prj<-"+proj=lcc +lat_1=49 +lat_2=77 +lat_0=0 +lon_0=-95 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs" # from metadata lambert conformal conic
-perims.lcc<-spTransform(perims, bio.prj)
+bio.prj<-"+proj=laea +lat_0=45 +lon_0=-100 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs +ellps=WGS84 +towgs84=0,0,0" 
 
 ##setup for principal components analysis
 ##Set working directory to the location of your climate raster data.
-setwd("C:/Users/sandr/Documents/Rfiles/stress.gradients/data/bioclim.1981-2010/")
-
+my.biopath<-"./data/bioclim/cropped/"
+homedir<-getwd()
+setwd(my.biopath)
 ## read in the layers w study region extext
 files.to.read<-list.files(pattern='1.asc')
-name.raster<-c("AHM", "DD_5", "EMT","MAP", "MAT","NFFD", "PPT_sm", "PPT_wt","TD")
+name.raster<-c("AHM","DD_5","EMT","MAP","MAT","NFFD", "PPT_sm","PPT_sp","PPT_wt","TD")
 #
 for (i in 1:length(files.to.read)) {
     a<-raster(files.to.read[i])
@@ -86,8 +83,7 @@ MAP.pcadf<-as.data.frame(MAP.pca)
 
 # 9. using 'prcomp' function to perform the PCA
 # scores=TRUE specify that you want to save the PCA values for each pixel, and scale.=TRUE is what standardize the variables ! 
-
-pca.climate<-prcomp(~ AHM + DD_5 + EMT + MAP + MAT + NFFD + PPT_sm + PPT_wt + TD, data = MAP.pcadf, scores=TRUE, scale.=TRUE)
+pca.climate<-prcomp(~ AHM + DD_5 + EMT + MAP + MAT + NFFD + PPT_sm + PPT_sp + PPT_wt + TD, data = MAP.pcadf, scores=TRUE, scale.=TRUE)
 
 ###########################################Convert PCA scores to raster map################################################
 #1. Saving pca results into R's memory
@@ -124,8 +120,7 @@ pc2.rast<-setValues(MAP,pc2[,2])
 writeRaster(pc1.rast,paste(homedir, "/data/PC1.tif", sep=""), format="GTiff", overwrite=TRUE)
 writeRaster(pc2.rast,paste(homedir, "/data/PC2.tif", sep=""), format="GTiff", overwrite=TRUE)
 
-########### didn't run this part, but could do next time based on Marc's suggestion
-#########################################Apply varimax rotation to PCs and export #############################################
+################Apply varimax rotation to PCs and export #############################################
 #1. Apply a varimax rotation to the principal components analysis, if the loadings are difficult to interpret
 varimax.rotation<-varimax(rotation)
 
@@ -156,9 +151,8 @@ rc2.rast<-setValues(MAP,rc2[,2])
 writeRaster(rc1.rast, paste(homedir, "/data/PC1rot.tif", sep=""), format="GTiff", overwrite=TRUE)
 writeRaster(rc2.rast, paste(homedir, "/data/PC2rot.tif", sep=""), format="GTiff", overwrite=TRUE)
 
-######################## ran this part
 ##look at results
-summary(pca.climate) # 0.6347 %var pc1; 0.2074 %var pc2
+summary(pca.climate) # 0.62 %var pc1; 0.20 %var pc2
 names(pca.climate) 
 dim(pca.climate$x)
 pca.climate$x[1:20,1:2] 
@@ -166,15 +160,29 @@ rot.df<-pca.climate$rotation[,1:2] # pc 1 = energy/heat; pc2=moisture/
 write.table(rot.df, paste(homedir, "/data/pc-rotation.txt", sep=""))
 
 library(rasterVis)
-levelplot(pc1.rast, margin=FALSE)
-levelplot(pc2.rast, margin=TRUE)
+levelplot(rc1.rast, margin=FALSE)
+levelplot(rc2.rast, margin=TRUE)
 
-## extract values of pcs w/in perimeters
-s<-stack(pc1.rast, pc2.rast)
-ex1<-extract(s, perims.lcc, method='bilinear', df=TRUE) # which burn is which?
-samp1<-spsample(perims.lcc, n=3000, type="random") # use random sample...
-ex1<-extract(s, samp1, method='bilinear', df=TRUE)
-o=over(samp1, perims.lcc)
-dat<-cbind(data.frame(samp1), ex1, o)
+## sample the field plot locations
 setwd(homedir)
-write.table(dat, "./data/tab/sample.pcs.txt") ## use this for scatter plots in pc space
+## loop through the dem/pt file directories to grab the points and sample
+dirs<-c("burnt_cabin", "cerro_grande", "clear_creek", "complex_747", "hash_rock", "hayman", "missionary_ridge",
+        "north_rim", "ponil", "pumpkin", "roberts_creek", "rodeo")
+pc1<-raster("./data/PC1rot.tif")
+pc2<-raster("./data/PC2rot.tif")
+s<-stack(pc1, pc2)
+crs(s)<-bio.prj
+for(i in 1:length(dirs)) {
+  # read in shp for ith dir
+  list.shp<-list.files(paste(shp.path, dirs[i],sep=""), pattern=".shp")
+  pts<-read_sf(paste(shp.path, dirs[i], "/", list.shp, sep=""))
+  # project to bioclim prj
+  pts_bio<-st_transform(pts, st_crs(s))
+  # sample the stacked pc layers, add col w/ plot id and write to text file
+  ex1<-extract(s, as_Spatial(pts_bio), method='bilinear', df=TRUE)
+  dat<-cbind(pts_bio[,1], ex1)
+  write.table(dat, "./data/tab/new_pcs_pt_data.txt", append = TRUE, row.names=FALSE, col.names=FALSE)
+}
+
+
+
