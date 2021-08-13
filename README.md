@@ -18,7 +18,7 @@ Miller, Carol; Krawchuk, Meg A.; Coop, Jonathan D.; Downing, William M.; Walker,
 data.summaries.Rmd (and data.summaries.html): First look at the field data (in progress)
 
 #### PCA climate space
-climate.space.bioclim.R: use bioclimatic data to run pca for the extent of the study region
+climate.space.bioclim.R: use bioclimatic data to run pca for the extent of the study region. Now using 1991-2020 normals.
 csplots.pcs.R: use the output from the above to plot the location of the study burns in the climate space (x=PC1, y=PC2)
     example output: pcscatter3.png
     
@@ -32,4 +32,7 @@ plot.def.stats.R: plot statistics of the overall distribution of def values at e
 #### Tree age graphs
 
 trees.and.spei.plots_2002.R: For sites burned in 2002, assemble the data and plot SPEI, year of origin (derived from internode counts), and heat load index 
+
+#### Terrain metrics
+terrain.functions.R: calculate metrics with raster and RSAGA 
 
