@@ -1,0 +1,812 @@
+
+#install.packages("installr")
+#library(installr)
+#updateR()
+
+setwd("I:/Box Sync/meg/projects/refugia/extensive dataset analyses/data 13 fires/for r analyses/communitymatters/)"
+
+getwd()
+
+###_out file is datafile that only includes OUT plots, e.g., high severity plots.
+
+community.cover <- read.csv("I:\\Box Sync\\meg\\projects\\refugia\\extensive dataset analyses\\data 13 fires\\for r analyses\\All_Refugia_Plants_mk_cover_out.csv")
+
+#update 08/26/2021 -- update cover to \\All_Refugia_Plants_mk_cover_out2.csv, with error corrections from Sandra (remove one plot PUMPOUT005; see lab book for details)
+community.cover <- read.csv("I:\\Box Sync\\meg\\projects\\refugia\\extensive dataset analyses\\data 13 fires\\for r analyses\\All_Refugia_Plants_mk_cover_out2.csv")
+
+community.types <- read.csv("I:\\Box Sync\\meg\\projects\\refugia\\extensive dataset analyses\\data 13 fires\\for r analyses\\All_Refugia_Plants_mk_types.csv")
+
+
+######
+
+###this should add columns for each type assignment to the community.cover species list. should result in 7114 rows of data (all rows from community.cover).
+
+community <- merge(community.cover,community.types, by = "SPECIES_CODE", all.x=T)   #all rows, though I think 140 rows are missing some information, these don't seem to have any information.
+
+
+###then remind myself about cover estimates. These are percentage "classes", midpoints for groups. A few heights go up to 40m, probably single tree refugia. For Will's paper on community composition he
+###only used cover estimates for heights <=5m. I think thanks makes good sense to emulate.
+#Note, this coincides with strata 2-5 (excluding stratum 1 which is >5m).
+
+community.5 =community[community$HEIGHT_M <=5.0,]
+
+#UNK_forb and UNK_Asteraceae, etc. are coded as forb.na. Remove from community.5
+
+try = community.5[community.5$type!="forb.na",] #remove the unknowns in critical categories (51 rows)
+community.5 = try
+
+#now need to organize so that column headers are PLOT_ID, type1,type2, type3 where the typex values are sum of cover estimates.
+
+#This dataset now has 544 unique PLOT_IDs, including (strangely) one NA plot. So 543? Need to figure that out.
+
+#let's work in dplyr.
+library(dplyr)
+
+try = community.5
+
+#summarize COVER for each PLOT_ID and by type:
+
+try2 <- try%>%
+group_by(PLOT_ID, type)%>%
+summarize(cover_sum = sum(COVER, na.rm=TRUE))
+
+#this has all eleven categories in a column, with multiple rows of PLOT_ID, need to reshape.
+
+install.packages("tidyr")
+library(tidyr)
+
+try3 = pivot_wider(try2, names_from=type, values_from = cover_sum) #a tibble
+try4 = as.data.frame(try3) #has extra row, 544, with no data. remove
+try4 = try4[1:543,] #has extra column 14
+try4 = try4[,1:13] #Need to change NA to 0 values 
+try5 = replace_na(try4,list(forb.a=0,forb.p=0,gram.a=0,gram.p=0,shru.d=0,shru.e=0,tree.e=0,tree.d=0,subs.e=0,subs.d=0,forb.b=0,subs.p=0))
+
+#subs.p was an error (it has one record, should have been forb). But okay to continue here, this will be lumped later on.
+
+#543 unique plots, with sum of cover <=5m accordingly to eleven functional groups! Might want to create a total column, with cover total.
+
+#08/26/2021 -- remove PUMPOUT005 from try5
+
+mydata = try5[-398,]
+
+
+###let's try the clustering approach, to see how easy/hard it is.
+
+install.packages("ggpubr")
+install.packages("factoextra")
+install.packages("cluster")
+install.packages("fpc")
+
+library(ggpubr)
+library(factoextra)
+library(cluster)
+library(fpc)
+
+https://www.datanovia.com/en/blog/k-means-clustering-visualization-in-r-step-by-step-guide/
+
+# Compute k-means with k = 4
+set.seed(123)
+res.km <- kmeans(scale(try5[,2:13]), 4, nstart = 25)
+# K-means clusters showing the group of each individuals
+res.km$cluster
+
+#simple plot
+fviz_cluster(res.km, data = try5[,2:13],
+	palette = c("blue","red","green","orange","grey","black","purple","yellow", "lightblue","red"),
+             geom = "point",
+             ellipse.type = "convex", 
+             ggtheme = theme_bw()
+             )
+
+res.km
+
+#It looks like for many cluster numbers, one cluster only has 1 observation. THis behavior continues
+#even if we remove the outlier.
+
+#Cluster = 4 is the largest cluster without a singleton -- useful to consider as rationale, given
+#the diagnostics don't provide any really clear breaks/knees?
+
+#when finalized, add cluster, eg:
+
+cluster.5 = res.km$cluster
+
+try6 = cbind(try5,cluster.5)
+
+
+#look at optimal number of clusters
+
+fviz_nbclust(scale(try5[,2:13]), kmeans, method = "wss") +
+geom_vline(xintercept = 3, linetype = 2)
+
+#if you resize this it looks like n=5 clusters would be best, even though knee is technically at 3? But 5 has outlier.
+
+fviz_nbclust(scale(try5[,2:13]), kmeans, method = "silhouette")
+
+
+#Next steps. Try PAM, understand diagnostics of k-means cluster, decide on cluster size, look at more visuals.
+Share with group!
+
+A robust alternative to k-means is PAM, which is based on medoids. 
+As discussed in the next chapter, the PAM clustering can be computed using the function pam() [cluster package]. 
+The function pamk( ) [fpc package] is a wrapper for PAM that also prints the suggested number of clusters based on optimum average silhouette width.
+
+fviz_nbclust(scale(try5[,2:13]), pam, method = "silhouette")
+
+#PAM doesn't seem to end up with outliers on n=5 either. Seems like best bet overall
+
+pm <- eclust(scale(try5[,2:13]),FUNcluster="pam", k=5,hc_metric = "euclidean") #this includes a plot on PC axis.
+
+cluster.5 = pm$clustering
+
+try6 = cbind(try5,cluster.5)
+
+#posted this to Github
+
+#
+#Next steps. Formalize PAM decisions.
+
+#exploring clValid package to confirm PAM with n=5 before visualization.
+
+install.packages("clValid")
+library(clValid)
+
+clmethods <- c("hierarchical","kmeans","pam")
+
+intern <- clValid(scale(try5[,2:13]), nClust = 2:8, 
+              clMethods = clmethods, validation = "internal")
+
+summary(intern)
+#This methods suggests hierchical clustering is the optimal method
+
+stab = clValid(scale(try5[,2:13]), nClust = 2:8, 
+              clMethods = clmethods, validation = "stability")
+summary(stab)
+
+#this set of stability metrics suggest PAM with n=8, or hierarchical with 2 clusters.
+
+#let's try agglomerative hierarhcial clustering.
+
+library(stats)
+
+# Dissimilarity matrix
+d <- dist(scale(try5[,2:13]), method = "euclidean")
+
+# Hierarchical clustering using Complete Linkage
+hc1 <- hclust(d, method = "complete" )
+
+# Plot the obtained dendrogram
+plot(hc1, cex = 0.6, hang = -1)
+
+#Let's cut the dendrogram
+
+# complete method, could use: "average", "single", "complete", "ward"
+#none of these methdso break out valuable groups with n=8. Majority (like 90%) in group 1, then piddly into the rest
+hc5 <- hclust(d, method = "single" )
+
+# Cut tree into 8 groups
+sub_grp <- cutree(hc5, k = 10)
+
+# Number of members in each cluster
+table(sub_grp)
+
+# I think the PAM will work better/best. So here we go back that direction.
+
+#Begin visualizing dominant species for each cluster, using PAM, k=5. Fromalize PAM decisions and exploratory visualizations, and develop graphic to illustrate.
+#Work with Sandra for next steps in model exploratoray data analysis and writing. Integrate refugia metrics into my try6 dataframe, and other explanatories.
+#Share with group!
+
+#Sandra is working on wrangling environmental data and refugia metrics. Yay.
+
+#try6 is the dataframe with cluster appended
+
+> table(try6$cluster.5)
+
+  1   2   3   4   5 
+375  42  41  35  50 
+
+So still dominated by cluster 1.
+
+#I'd like to get the dominant species for each plot id here, using the original try dataframe which has all species
+
+pm <- eclust(scale(try5[,2:13]),FUNcluster="pam", k=5,hc_metric = "euclidean") #this includes a plot on PC axis.
+
+row.names(try6) = try6$PLOT_ID
+
+#try this
+row.names(try5) = try5$PLOT_ID
+pam.res <- pam(scale(try5[,2:13]), 5)
+
+# Visualize pam clustering
+fviz_cluster(pam.res, ellipse.type = "norm")
+fviz_cluster(pam.res, geom = "point", ellipse.type = "norm")
+
+#and this
+pam.res <- pam(scale(try5[,2:13]), 8)
+
+# Visualize pam clustering
+fviz_cluster(pam.res, ellipse.type = "norm")
+
+#ok, now try to work on bringing in the summary species composition data for major growth forms -- one column for each type? 
+
+save.image("I:\\Box Sync\\meg\\projects\\refugia\\extensive dataset analyses\\data 13 fires\\for r analyses\\communitymatters\\community.RData")
+
+#08/06/2021
+#working to summarize typex for each of the five clusters. which functional group characterizes each of the five types?
+#then, which species contribue to those functional groups at each plot.
+
+#using try6, what is the flavour of each functional group for each cluster. how to illustrate, let's try simple first
+#here, density plots (note, by constraining the x-axis you also constrain the calculation, but seems to reflect overall
+#pattern here, wanting to zoom in to interpret what groups are higher/lower in low value space
+
+#forb.a
+ggplot(try6, aes(forb.a, color=as.factor(cluster.5))) +
+  geom_density() +
+		xlim(0,30)
+#forb
+ggplot(try6, aes(forb.p, color=as.factor(cluster.5))) +
+  geom_density()
+
+#boxplot matrix
+par(mfrow=c(3,4))
+boxplot(try6$forb.a~try6$cluster.5)
+boxplot(try6$forb.p~try6$cluster.5)
+boxplot(try6$gram.a~try6$cluster.5)
+boxplot(try6$gram.p~try6$cluster.5)
+boxplot(try6$shru.d~try6$cluster.5)
+boxplot(try6$shru.e~try6$cluster.5)
+boxplot(try6$tree.d~try6$cluster.5)
+boxplot(try6$tree.e~try6$cluster.5)
+boxplot(try6$subs.e~try6$cluster.5)
+boxplot(try6$subs.d~try6$cluster.5)
+boxplot(try6$forb.b~try6$cluster.5)
+boxplot(try6$subs.p~try6$cluster.5)
+
+#saved as boxplots_groups_types and shows meaningful distinction among the five groups!
+forb.p well-represented but equivalent across all groups
+subs.e, subs.d, forb.b, subs.p, forb.a are all low values and not much variation across all groups, so no longer considered for major interpretations
+# of plots in group recorded as (x)
+
+cluster1 (375): herbaceous and shrub dominated, gram.p>gram.a and some larger cover of forb.a; shrub.e and shrub.d similar; cluster1/2/3 have higher gram.p overall than do cluster 4/5.
+cluster2 (42): evergreen shrub dominated, larger cover of shru.e than all others (~80) and belongs to higher gram.p super-group.
+cluster3 (41). evergreen treed dominated, larger cover of tree.e than all others (~40) and belongs to higher gram.p super-group.
+cluster4 (35): deciduous shrub dominated, larger cover of shru.d than all others (~80) and belongs to lower gram.p super-group.
+cluster5 (50): deciduous tree dominated, larger cover of tree.d than all others (40) and belongs to lower gram super-group.
+
+#It looks like it could be valuable to divide up cluster1 somehow. 
+#Maybe a PAM on cluster 1 alone as a hierarchical approach to unpack herbaceous versus shrubby plots. So this should only use a sub-set of functional groups?
+#I think trying it without the subs.e, subs.d, forb.b, subs.p, forb.a (low values) would make sense.
+#(PAM on cluster 1 alone before reducing low values shows optimal two groups, but still large imbalance (333 in group 1)
+
+#But first, re-do entire PAM but not including the low values, so try5[,2:9]
+
+####################################
+
+fviz_nbclust(scale(try5[,2:9]), pam, method = "silhouette")# this is sub-set of columns, excluding sub-shrub.
+#suggests n=5 is optimal grouping
+
+#PAM doesn't seem to end up with outliers on n=5 either. Seems like best bet overall
+
+pm <- eclust(scale(try5[,2:9]),FUNcluster="pam", k=5,hc_metric = "euclidean") #this includes a plot on PC axis.
+
+cluster.5.n = pm$clustering
+cluster.5.n
+  1   2   3   4   5 
+332  44  48  55  64 
+
+pam.res <- pam(scale(try5[,2:9]), 5)
+
+# Visualize pam clustering
+fviz_cluster(pam.res, ellipse.type = "norm")
+fviz_cluster(pam.res, geom = "point", ellipse.type = "norm")
+
+now look again with boxplots:
+
+try6 = cbind(try6,cluster.5.n)
+#boxplot matrix
+par(mfrow=c(3,3))
+boxplot(try6$forb.a~try6$cluster.5.n)
+boxplot(try6$forb.p~try6$cluster.5.n)
+boxplot(try6$gram.a~try6$cluster.5.n)
+boxplot(try6$gram.p~try6$cluster.5.n)
+boxplot(try6$shru.d~try6$cluster.5.n)
+boxplot(try6$shru.e~try6$cluster.5.n)
+boxplot(try6$tree.d~try6$cluster.5.n)
+boxplot(try6$tree.e~try6$cluster.5.n)
+
+Same general patterns/groupings as before, but with adjusted numbers:
+cluster1 (332): herbaceous and shrub dominated, gram.p>gram.a and some larger cover of forb.a; shrub.e and shrub.d similar; cluster1/2/3 have higher gram.p overall than do cluster 4/5.
+cluster2 (44): evergreen shrub dominated, larger cover of shru.e than all others (~80) and belongs to higher gram.p super-group.
+cluster3 (48). evergreen treed dominated, larger cover of tree.e than all others (~40) and belongs to higher gram.p super-group.
+cluster4 (55): deciduous shrub dominated, larger cover of shru.d than all others (~80) and belongs to lower gram.p super-group.
+cluster5 (64): deciduous tree dominated, larger cover of tree.d than all others (40) and belongs to lower gram super-group.
+
+So go with this new updated clustering and proceed with dividing up cluster 1 into sub-clusters
+
+##$$$08/17/2021 come back here to grab the hierarchical clustering code once finished with agregation of shrubs.
+***
+
+####################################
+#now do clustering on group 1
+####################################33
+
+fviz_nbclust(scale(try6[try6$cluster.5.n==1,2:9]), pam, method = "silhouette")
+#suggests 7 groups should be optimal
+
+#PAM seems to show good discrimmination with two groups:
+pm <- eclust(scale(try6[try6$cluster.5==1,2:9]),FUNcluster="pam", k=7,hc_metric = "euclidean") #this includes a plot on PC axis.
+
+cluster.7 = pm$clustering
+
+cluster.7
+  1   2   3   4   5   6   7 
+ 47  19  58  49  45  36 121 
+
+now integrate second clustering into new classifier within group 1
+
+#hmmm, now how to integrate cluster.2 into this...
+
+cluster.7 = as.data.frame(cluster.7)
+cluster.7 = data.frame(PLOT_ID = row.names(cluster.7), cluster.7)
+
+try7 <- merge(try6,cluster.7, by = "PLOT_ID", all.x=T)   
+
+#this creates an updated row cluster.7 that uses the two-part PAM grouping process, but need to add new groups to a total of 11 types
+save.image("I:\\Box Sync\\meg\\projects\\refugia\\extensive dataset analyses\\data 13 fires\\for r analyses\\communitymatters\\community.RData")
+
+
+######!!!@@##$$$work here on ifelse statements
+
+try7$cluster.11= ifelse(try7$cluster.7==1,1, try7$cluster.2)
+
+try7$cluster.52 = ifelse(try7$cluster.5==1, try7$cluster.2.up, try7$cluster.5)
+
+#take a look at the boxplots now, need to update to correct:
+
+#boxplot matrix
+par(mfrow=c(3,4))
+boxplot(try6$forb.a~try6$cluster.5)
+boxplot(try6$forb.p~try6$cluster.5)
+boxplot(try6$gram.a~try6$cluster.5)
+boxplot(try6$gram.p~try6$cluster.5)
+boxplot(try6$shru.d~try6$cluster.5)
+boxplot(try6$shru.e~try6$cluster.5)
+boxplot(try6$tree.d~try6$cluster.5)
+boxplot(try6$tree.e~try6$cluster.5)
+boxplot(try6$subs.e~try6$cluster.5)
+boxplot(try6$subs.d~try6$cluster.5)
+boxplot(try6$forb.b~try6$cluster.5)
+boxplot(try6$subs.p~try6$cluster.5)
+
+
+
+
+#need to finish...
+
+#################################################################
+#Work here 08/17/2021 to combine shrub columns to aggregate subshrubs with shrubs, then continue with hierarchical analysis
+#From above: I think trying it without the subs.e, subs.d, forb.b, subs.p, forb.a (low values) would make sense.
+#subs.p was an error. it should have been forb.p -- it is just one species, low cover so ok to fix here
+#maintain forb.a for now, test out new clustering on simplified types
+
+#shru.d1 = shru.d + subs.d
+#shru.e1 = shru.e + subs.e
+#forb.p1 = forb.p + forb.b + subs.p
+
+try5$shru.d1 = try5$shru.d + try5$subs.d
+try5$shru.e1 = try5$shru.e + try5$subs.e
+try5$forb.p1 = try5$forb.p + try5$forb.b + try5$subs.p
+
+names(try5)
+ [1] "PLOT_ID" "forb.a"  "forb.p"  "gram.a"  "gram.p"  "shru.d"  "shru.e"  "tree.e"  "tree.d"  "subs.e"  "subs.d"  "forb.b"  "subs.p"  "shru.d1" "shru.e1"
+[16] "forb.p1"
+
+#Re-do entire PAM on simplified types, so try5[,c(2,16,4,5,14,15,8,9)]
+#This is eight types. Could group these by maximum cover type. But let's do the cluster since it's a bit more synthetic
+
+save.image("I:\\Box Sync\\meg\\projects\\refugia\\extensive dataset analyses\\data 13 fires\\for r analyses\\communitymatters\\community.RData")
+
+####################################
+
+fviz_nbclust(scale(try5[,c(2,16,4,5,14,15,8,9)]), pam, method = "silhouette")# this is sub-set of columns.
+#suggests n=4 is optimal grouping, followed closely by 7
+
+
+pm <- eclust(scale(try5[,c(2,16,4,5,14,15,8,9)]),FUNcluster="pam", k=4,hc_metric = "euclidean") #this includes a plot on PC axis.
+
+cluster.4 = pm$clustering
+cluster.4
+  1   2   3   4 
+375  43  51  74 
+
+
+pam.res <- pam(scale(try5[,c(2,16,4,5,14,15,8,9)]), 4)
+
+# Visualize pam clustering
+fviz_cluster(pam.res, ellipse.type = "norm") #ellipses with plot names
+fviz_cluster(pam.res, geom = "point", ellipse.type = "norm") #ellipses without plot names, just symbols -- simpler visual
+
+now look again with boxplots:
+
+try4 = cbind(try5,cluster.4)
+
+#boxplot matrix
+par(mfrow=c(3,3))
+boxplot(try4$forb.a~try4$cluster.4)
+boxplot(try4$forb.p1~try4$cluster.4)
+boxplot(try4$gram.a~try4$cluster.4)
+boxplot(try4$gram.p~try4$cluster.4)
+boxplot(try4$shru.d1~try4$cluster.4)
+boxplot(try4$shru.e1~try4$cluster.4)
+boxplot(try4$tree.d~try4$cluster.4)
+boxplot(try4$tree.e~try4$cluster.4)
+
+
+Same general patterns/groupings as before, but with adjusted numbers:
+cluster1 (375): no clear dominance by any particular type; catch all
+cluster2 (43): evergreen shrub dominated, larger cover of shru.e1 than all others.
+cluster3 (51). deciduous dominated, larger cover of shru.d1 than all others.
+cluster4 (74): deciduous tree dominated, larger cover of tree.d than all others .
+
+So go with this new updated clustering and proceed with dividing up cluster 1 into sub-clusters
+
+####################################
+#now do clustering on group 1, to break it up
+####################################33
+
+fviz_nbclust(scale(try4[try4$cluster.4==1,c(2,16,4,5,14,15,8,9)]), pam, method = "silhouette") #rows where cluster = 1
+#suggests 7 groups should be optimal, but another earlier hump at 3 (or increasing up or 5-6)
+
+#PAM seems to show good discrimmination with two groups:
+pm <- eclust(scale(try4[try4$cluster.4==1,c(2,16,4,5,14,15,8,9)]),FUNcluster="pam", k=3,hc_metric = "euclidean") #this includes a plot on PC axis.
+
+cluster.3 = pm$clustering
+
+cluster.3
+  1   2   3 
+277  67  31 
+
+
+now take a look at boxplots for that subset of plots in the second clustering
+
+pam.res <- pam(scale(try4[try4$cluster.4==1,c(2,16,4,5,14,15,8,9)]), 3)
+
+# Visualize pam clustering
+fviz_cluster(pam.res, ellipse.type = "norm") #ellipses with plot names
+fviz_cluster(pam.res, geom = "point", ellipse.type = "norm") #ellipses without plot names, just symbols -- simpler visual
+
+now look again with boxplots:
+
+try3 = cbind(try4[try4$cluster.4==1,c(2,16,4,5,14,15,8,9)],cluster.3)
+
+#boxplot matrix
+par(mfrow=c(3,3))
+boxplot(try3$forb.a~try3$cluster.3)
+boxplot(try3$forb.p1~try3$cluster.3)
+boxplot(try3$gram.a~try3$cluster.3)
+boxplot(try3$gram.p~try3$cluster.3)
+boxplot(try3$shru.d1~try3$cluster.3)
+boxplot(try3$shru.e1~try3$cluster.3)
+boxplot(try3$tree.d~try3$cluster.3)
+boxplot(try3$tree.e~try3$cluster.3)
+
+Same general patterns/groupings as before, but with adjusted numbers b/c subset of only cluster 1 from above:
+cluster1 (277): no clear dominance by any particular type; catch all
+cluster2 (67): evergreen shrub dominated, larger cover of shru.e1 than all others.
+cluster3 (31). deciduous tree dominated, larger cover of tree.d than all others .
+
+Add cluster 2 and cluster 3 to similar cluster groups in initial analysis,
+And dig again into cluster 1 of this outcome
+
+####################################
+#now again do clustering on group 1, to break it up (as third tier)
+####################################33
+
+fviz_nbclust(scale(try3[try3$cluster.3==1,c(1:8)]), pam, method = "silhouette") #rows where cluster = 1
+#suggests 8 groups should be optimal, but another earlier very similar hump at 2 
+
+#PAM seems to show good discrimmination with two groups:
+pm <- eclust(scale(try3[try3$cluster.3==1,c(1:8)]),FUNcluster="pam", k=2,hc_metric = "euclidean") #this includes a plot on PC axis.
+
+cluster.2 = pm$clustering
+
+table(cluster.2)
+cluster.2
+  1   2 
+225  52 
+
+now take a look at boxplots for that subset of plots in the second clustering
+
+pam.res <- pam(scale(try3[try3$cluster.3==1,c(1:8)]), 2)
+
+# Visualize pam clustering
+fviz_cluster(pam.res, ellipse.type = "norm") #ellipses with plot names
+fviz_cluster(pam.res, geom = "point", ellipse.type = "norm") #ellipses without plot names, just symbols -- simpler visual
+
+now look again with boxplots:
+
+try2 = cbind(try3[try3$cluster.3==1,c(1:8)],cluster.2)  #now 277 rows
+
+#boxplot matrix
+par(mfrow=c(3,3))
+boxplot(try2$forb.a~try2$cluster.2)
+boxplot(try2$forb.p1~try2$cluster.2)
+boxplot(try2$gram.a~try2$cluster.2)
+boxplot(try2$gram.p~try2$cluster.2)
+boxplot(try2$shru.d1~try2$cluster.2)
+boxplot(try2$shru.e1~try2$cluster.2)
+boxplot(try2$tree.d~try2$cluster.2)
+boxplot(try2$tree.e~try2$cluster.2)
+
+#This doesn't seem to be differentiating with any clarity. Let's try a new tack, where I assign plots to groups based on dominant type.
+
+#back to try5 with the eight major types
+try5.dom = try5[,c(2,16,4,5,14,15,8,9)]
+save.image("I:\\Box Sync\\meg\\projects\\refugia\\extensive dataset analyses\\data 13 fires\\for r analyses\\communitymatters\\community.RData")
+
+dom.type = colnames(try5.dom)[max.col(try5.dom,ties.method="first")]
+
+ table(dom.type)
+dom.type
+ forb.a forb.p1  gram.a  gram.p shru.d1 shru.e1  tree.d  tree.e 
+      5      64      11     173     107      80      58      45 
+
+#this shows that gram.p/gram.a are likely the same as the clustering -- inpentrable.. Let's add this column to try4 to check it out.
+
+try4.and.dom = cbind(try4, dom.type)
+
+ table(try4.and.dom$cluster.4, try4.and.dom$dom.type)
+   
+    forb.a forb.p1 gram.a gram.p shru.d1 shru.e1 tree.d tree.e
+  1      5      57     11    160      57      41      8     36
+  2      0       0      0      5       0      38      0      0
+  3      0       2      0      0      49       0      0      0
+  4      0       5      0      8       1       1     50      9
+
+#boxplot matrix
+par(mfrow=c(3,3))
+boxplot(try4.and.dom$forb.a~try4.and.dom$dom.type)
+boxplot(try4.and.dom$forb.p1~try4.and.dom$dom.type, ylim = c(0,100))
+boxplot(try4.and.dom$gram.a~try4.and.dom$dom.type)
+boxplot(try4.and.dom$gram.p~try4.and.dom$dom.type)
+boxplot(try4.and.dom$shru.d1~try4.and.dom$dom.type)
+boxplot(try4.and.dom$shru.e1~try4.and.dom$dom.type)
+boxplot(try4.and.dom$tree.d~try4.and.dom$dom.type)
+boxplot(try4.and.dom$tree.e~try4.and.dom$dom.type)
+
+Seems like a lumping of forb.a and forb.p1, then figure out what to do with gram.a, a type of gram.p, shru.d1, shru.e1, tree.d, and tree.3 could work
+Think about how to break up gram.p into two sub-groups? -- using cluster? maybe glom together gram.a and gram.p then cluster to unpack?
+
+That could result in ~8 groups, with the majority of them allocated bia clear patterns of dominant cover, then the herbaceous ambiguity broken up using borader community clustering
+
+That's the next step then, cluster analysis on gram groups to see if we can bread into three in a meaningful way.
+
+#08/26/2021. After a bit of reading on cluster, and inspired by Andrew's Chapter 4, let's try out Agglomerative Clustering. From
+#what I've read now it is more stable that PAM and far more than k-means. And the Ward's method is useful when you're have trouble with uneven cluster sizes
+
+#Re-do entire cluster on simplified types using agnes, so using mydata[,c(2,16,4,5,14,15,8,9)]
+#This is eight types. One of the blogs suggested comparing end types against another column -- could group these by maximum cover type to interpret
+
+#scaled dataset of key columns
+
+mydata.s = scale(mydata[,c(2,16,4,5,14,15,8,9)])
+
+#agglomerative clustering using cluster library
+
+hc2 <- agnes(mydata.s, method = "complete")
+hc2$ac
+[1] 0.9549043
+
+# vector of methods to compare
+m <- c( "average", "single", "complete", "ward")
+names(m) <- c( "average", "single", "complete", "ward")
+
+# function to compute coefficient
+ac <- function(x) {
+  agnes(mydata.s, method = x)$ac
+}
+map_dbl(m, ac)   
+
+#looking for highest agglomerative clustering coefficient. Ward gets highest value:
+map_dbl(m, ac)      
+  average    single  complete      ward 
+0.9418399 0.9205550 0.9549043 0.9704408 
+
+#Let us look at its dendogram.
+hc3 <- agnes(mydata.s, method = "ward")
+pltree(hc3, cex = 0.6, hang = -1, main = "Dendrogram of agnes")
+
+#hard to tell what the clusters should be, seems like similar problem to before where some groups are large and others small
+
+#after exploring the data/dendrogram, it looks like 6 clusters is a good place to shart. and then potentially dividing up cluster 1 into subclusters, as above?
+   
+clust <- cutree(hc3, k = 6)
+
+> table(clust)
+clust
+  1   2   3   4   5   6 
+342  14  39  57  51  39 
+
+#visualize
+fviz_cluster(list(data = mydata.s, cluster = clust))  ## from ‘factoextra’ package 
+
+#look at groups on dendrogram
+pltree(hc3, cex = 0.6, hang = -1, main = "Dendrogram of agnes")
+
+rect.hclust(hc3, k =6, border = 2:10)
+
+save.image("I:\\Box Sync\\meg\\projects\\refugia\\extensive dataset analyses\\data 13 fires\\for r analyses\\communitymatters\\community.RData")
+
+#Let's do a cluster on the group 1 set and see how it compares to PAM
+
+#first cbind clust to mydata.s
+
+clust.agnes.6 = clust
+mydata.s = cbind(mydata.s,clust.agnes.6)
+mydata.s = as.data.frame(mydata.s)
+
+now look at with boxplots:
+
+mydata.6 = cbind(mydata,clust.agnes.6)
+
+#boxplot matrix
+par(mfrow=c(3,3))
+boxplot(mydata.6$forb.a~mydata.6$clust.agnes.6)
+boxplot(mydata.6$forb.p1~mydata.6$clust.agnes.6)
+boxplot(mydata.6$gram.a~mydata.6$clust.agnes.6)
+boxplot(mydata.6$gram.p~mydata.6$clust.agnes.6)
+boxplot(mydata.6$shru.d1~mydata.6$clust.agnes.6)
+boxplot(mydata.6$shru.e1~mydata.6$clust.agnes.6)
+boxplot(mydata.6$tree.d~mydata.6$clust.agnes.6)
+boxplot(mydata.6$tree.e~mydata.6$clust.agnes.6)
+
+cluster1 (342): no clear dominance by any particular type; catch all
+cluster2 (14): higher values of gram.a, and forb.a 
+cluster3 (39): higher values of shru.e1, moderate gram.p
+cluster4 (57): higher values of shru.d1, moderate gramp.p
+cluster5 (51): highest values of tree.e, some higher gram.p, some higher tree.d
+cluster6 (39): highest value of tree.d
+
+#now do cluster on only rows where clust.agnes.6 = 1
+
+# function to compute coefficient
+ac <- function(x) {
+  agnes(mydata.s[mydata.s$clust.agnes.6==1,], method = x)$ac
+}
+map_dbl(m, ac)  
+
+
+#looking for highest agglomerative clustering coefficient. Ward gets highest value:
+map_dbl(m, ac)      
+    
+  average    single  complete      ward 
+0.9000006 0.8681732 0.9257326 0.9624540  
+
+#Let us look at its dendogram.
+hc3 <- agnes(mydata.s[mydata.s$clust.agnes.6==1,], method = "ward")
+
+pltree(hc3, cex = 0.6, hang = -1, main = "Dendrogram of agnes on cluster 1")
+
+#looks like 2 or 3 clusters is the best outcome.
+
+clust <- cutree(hc3, k = 3)
+
+> table(clust)
+clust
+  1   2   3 
+ 83  75 184 
+
+> clust <- cutree(hc3, k = 2)
+> table(clust)
+clust
+  1   2 
+158 184 
+
+#I think going with two makes most sense here, since that'd bring the total up to n=8; I think further divisions will be difficult to interpret based on n=8 veg types
+#This way we can perhaps get a good feel of how these clusters match up to dominant vegetation, with a few switches likely due to overall community
+#This seems defensible to me.
+
+pltree(hc3, cex = 0.6, hang = -1, main = "Dendrogram of agnes on cluster 1")
+
+rect.hclust(hc3, k =2, border = 2:10)
+
+save.image("I:\\Box Sync\\meg\\projects\\refugia\\extensive dataset analyses\\data 13 fires\\for r analyses\\communitymatters\\community.RData")
+
+clust.agnes.2 = clust
+
+
+#now look at with boxplots, remember this is just the subset of mydata, that was identified as cluster1 in agnes.6:
+
+mydata.2 = cbind(mydata[mydata.s$clust.agnes.6==1,],clust.agnes.2)
+
+#boxplot matrix
+par(mfrow=c(3,3))
+boxplot(mydata.2$forb.a~mydata.2$clust.agnes.2)
+boxplot(mydata.2$forb.p1~mydata.2$clust.agnes.2)
+boxplot(mydata.2$gram.a~mydata.2$clust.agnes.2)
+boxplot(mydata.2$gram.p~mydata.2$clust.agnes.2)
+boxplot(mydata.2$shru.d1~mydata.2$clust.agnes.2)
+boxplot(mydata.2$shru.e1~mydata.2$clust.agnes.2)
+boxplot(mydata.2$tree.d~mydata.2$clust.agnes.2)
+boxplot(mydata.2$tree.e~mydata.2$clust.agnes.2)
+
+cluster1 (158): higher gram.p, sometimes higher forb.p1 -- so perennials slighly unique
+cluster2 (184): sometimes higher tree.d, lower gram.p, lower forb.p2 -- so more deciduous and lower perennials in comparison to others.
+
+#so now need to bring in agnes.2 cluster values back to mydata.6
+
+toot <- merge(mydata.6,mydata.2[,c(1,17)], by = "PLOT_ID", all.x=T) 
+
+#clust.7 will be the final groupings:
+
+toot$clust.7 = toot$clust.agnes.6 
+
+#remove NAs from clust.agnes.2 for ifelse
+
+toot$clust.agnes.2[is.na(toot$clust.agnes.2)] = 0
+
+toot$clust.7 = ifelse(toot$clust.agnes.2==2,7,toot$clust.agnes.6)
+
+table(toot$clust.7)
+
+  1   2   3   4   5   6   7 
+158  14  39  57  51  39 184 
+
+
+#boxplot matrix
+par(mfrow=c(3,3))
+boxplot(toot$forb.a~toot$clust.7)
+boxplot(toot$forb.p1~toot$clust.7)
+boxplot(toot$gram.a~toot$clust.7)
+boxplot(toot$gram.p~toot$clust.7)
+boxplot(toot$shru.d1~toot$clust.7)
+boxplot(toot$shru.e1~toot$clust.7)
+boxplot(toot$tree.d~toot$clust.7)
+boxplot(toot$tree.e~toot$clust.7)
+
+
+#then add dominant types code to test alignment and send to Sandra!
+
+#back to mydata with the eight major types
+mydata.dom = mydata[,c(2,16,4,5,14,15,8,9)]
+
+dom.type = colnames(mydata.dom)[max.col(mydata.dom,ties.method="first")]
+
+ table(dom.type)
+dom.type
+ forb.a forb.p1  gram.a  gram.p shru.d1 shru.e1  tree.d  tree.e 
+      5      64      11     172     107      80      58      45 
+
+
+toot.and.dom = cbind(toot, dom.type)
+
+table(toot.and.dom$clust.7, toot.and.dom$dom.type)
+   
+table(toot.and.dom$clust.7, toot.and.dom$dom.type)
+   
+    forb.a forb.p1 gram.a gram.p shru.d1 shru.e1 tree.d tree.e
+  1      3      39      2     93      13       8      0      0
+  2      2       0      9      0       3       0      0      0
+  3      0       0      0      5       0      34      0      0
+  4      0       2      0      6      49       0      0      0
+  5      0       3      0      5       2       1      1     39
+  6      0       3      0      1       1       0     34      0
+  7      0      17      0     62      39      37     23      6
+
+cm.clusters = toot.and.dom
+
+save.image("I:\\Box Sync\\meg\\projects\\refugia\\extensive dataset analyses\\data 13 fires\\for r analyses\\communitymatters\\community.RData")
+
+write.csv(cm.clusters,"cm_clusters08262021.csv", row.names = FALSE)
+
+#09/24/2021 inputting Sandra's full dataset: tempxvars_with_pipotally.csv
+
+fulldata = read.csv("I:\\Box Sync\\meg\\projects\\refugia\\extensive dataset analyses\\data 13 fires\\for r analyses\\from sandra\\tempxvars_with_pipotally.csv", header=TRUE)
+
+table(fulldata$Burn) #These are "OUT" sites only.
+
+          747   Burnt_Cabin         Cerro   Clear Creek     Hash_Rock        Hayman       Mission        Outlet         Ponil        Poplar 
+           37            21            33            40            41            73            37            37            38            34 
+      Pumpkin Roberts_Creek         Rodeo 
+           36            36            76 
+
+boxplot(pinpon_tally~Burn,data=fulldata)
